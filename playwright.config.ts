@@ -1,5 +1,9 @@
+
 import { defineConfig, devices } from '@playwright/test';
 
+import dotenv from 'dotenv'
+
+dotenv.config({path:'./e2e/config/.env'})
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
@@ -7,6 +11,8 @@ import { defineConfig, devices } from '@playwright/test';
 // import dotenv from 'dotenv';
 // import path from 'path';
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
+
+export const STORAGE_STATE = './e2e/auth/session.json'
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -25,8 +31,9 @@ export default defineConfig({
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
+    permissions: ['clipboard-write', 'clipboard-read'],
     /* Base URL to use in actions like `await page.goto('/')`. */
-    // baseURL: 'http://127.0.0.1:3000',
+    baseURL: 'https://neeto-form-web-playwright.neetodeployapp.com',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -35,19 +42,22 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     {
-      name: 'chromium',
+      name: 'login',
       use: { ...devices['Desktop Chrome'] },
+      testMatch:'**/login.setup.ts'
     },
 
     {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
+      name: 'loggedin tests',
+      use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE },
+      dependencies:['login'],
+      testMatch:'**/*spec.ts',
     },
 
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
+    // {
+    //   name: 'webkit',
+    //   use: { ...devices['Desktop Safari'] },
+    // },
 
     /* Test against mobile viewports. */
     // {
