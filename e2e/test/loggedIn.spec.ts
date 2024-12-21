@@ -1,4 +1,4 @@
-import { Browser, expect, Page } from "@playwright/test";
+import { Browser, chromium, expect, Page } from "@playwright/test";
 import { test } from "../fixture";
 import { FORM_INPUT_SELECTORS } from "../constants/selectors";
 import { FORM_LABELS } from "../constants/texts";
@@ -42,7 +42,7 @@ test.describe("Access Control: Password Protection on Form", ()=>{
             await page.getByTestId('link-copy-button').click()
             const copiedLink = await page.evaluate(() => navigator.clipboard.readText());
 
-            const newContext = await browser.newContext()
+            const newContext = await browser.newContext({ storageState: undefined })
             const incognito = await newContext.newPage()
             await incognito.goto(copiedLink)
 
@@ -53,6 +53,8 @@ test.describe("Access Control: Password Protection on Form", ()=>{
 
             await expect(incognito.locator('[data-cy="welcome-screen-group"]')).toBeVisible()
             await incognito.locator('input[data-cy="email-text-field"]').fill("sample@gmail.com")
+
+            await incognito.getByRole('button', {name: 'Submit'}).click()
 
             await expect(
                 incognito.locator('div')
