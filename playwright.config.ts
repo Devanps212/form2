@@ -53,8 +53,15 @@ export default defineConfig({
       name: 'loggedin tests',
       use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE },
       dependencies:['login'],
+      teardown:'Teardown',
       testMatch:'**/*spec.ts',
     },
+
+    {
+      name:"Teardown",
+      use: { ...devices['Desktop Chrome'] },
+      testMatch:'**/global.teardown.ts'
+    }
 
     // {
     //   name: 'webkit',
