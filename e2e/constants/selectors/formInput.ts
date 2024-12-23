@@ -9,5 +9,14 @@ export const FORM_INPUT_SELECTORS = {
     singleChoice:'.neeto-form-single-choice__item',
     inputTel:'input[type="tel"]',
     formName:'neeto-molecules-value-display',
-    header:'neeto-molecules-header'
+    saveChanges:'[data-test-id="save-changes-button"]',
+    passwordInput:'input[data-cy="password-text-field"]',
+    inputOption0:'input-option-0',
+    inputOption1:'input-option-1',
+    inputOption2:'input-option-2',
+    deleteOption2:'delete-option-button-2',
+    deleteCheckbox:'delete-archive-alert-archive-checkbox',
+    copyLink:'link-copy-button',
+    menuList:'menu-list',
+    optionSelect:'#react-select-4-option-0'
 }
