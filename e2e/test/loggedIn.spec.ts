@@ -1,7 +1,7 @@
 import { Browser, chromium, expect, Page } from "@playwright/test";
 import { test } from "../fixture";
-import { FORM_INPUT_SELECTORS } from "../constants/selectors";
-import { FORM_LABELS } from "../constants/texts";
+import { FORM_INPUT_SELECTORS, FORM_PUBLISH_SELECTORS, FORM_HEADER_SELECTORS } from "../constants/selectors";
+import { FORM_LABELS, SUBMISSION_USER_DETAILS } from "../constants/texts";
 import UserForm from "../poms/form";
 
 
@@ -11,7 +11,7 @@ test.describe("Access Control: Password Protection on Form", ()=>{
 
     test.beforeEach("should goto form creation page", async({page}:{page: Page})=>{
         await page.goto('/admin/dashboard/active')
-        await page.getByTestId(FORM_INPUT_SELECTORS.header)
+        await page.getByTestId(FORM_HEADER_SELECTORS.header)
         .getByRole('button', { name: FORM_LABELS.addNewForm }).click()
         await page.getByText(FORM_LABELS.startFromScratch).click()
         const form = page.getByTestId(FORM_INPUT_SELECTORS.formName)
@@ -19,76 +19,54 @@ test.describe("Access Control: Password Protection on Form", ()=>{
         formName = await form.innerText()
     })
 
-    test("should publish a form and set password for it", async({page, browser}:{page: Page, browser: Browser})=>{
+    test.afterEach("should delete form recently added", async({
+        page, 
+        form
+    }:{
+        page: Page, 
+        form: UserForm
+    })=>{
+        await page.goto('/admin/dashboard/active')
+        await form.formDeletion({formName})
+    })
+
+    test("should publish a form and set password for it", async({
+        page, 
+        browser,
+        form
+    }:{
+        page: Page, 
+        browser: Browser
+        form: UserForm
+    })=>{
         
         await test.step("Step 1: publish a form and check password validation", async()=>{
-            await page.getByTestId('publish-button').click()
-            await page.getByRole('link', { name: 'Settings' }).click()
-            await page.getByRole('link', { name: 'Access control Restrict' }).click()
-
-            await page.getByLabel('The form is password').click()
-            const password = page.getByPlaceholder('Enter password')
-            await password.fill("123")
-            await page.locator('[data-test-id="save-changes-button"]').click()
-            await expect(page.getByText('Password must be at least 4')).toBeVisible()
-
-            await password.fill("sample123")
-            await page.locator('[data-test-id="save-changes-button"]').click()
-            await page.waitForTimeout(3000)
-            
+            await page.getByTestId(FORM_PUBLISH_SELECTORS.publishButton).click()
+            await form.configureAndPublish({
+                purpose:"Access control Restrict",
+                formLabel:"The form is password"
+            })
         })
 
         await test.step("Step 2:Copy link and open in in cognito to check password protection", async()=>{
-            await page.getByRole('link', { name: 'Share' }).click()
-            await page.getByTestId('link-copy-button').click()
-            const copiedLink = await page.evaluate(() => navigator.clipboard.readText());
-
-            const newContext = await browser.newContext({ storageState: undefined })
-            const incognito = await newContext.newPage()
-            await incognito.goto(copiedLink)
-
-            await expect(incognito.locator('[data-cy="password-protected-heading"]')).toBeVisible()
-
-            await incognito.locator('input[data-cy="password-text-field"]').fill("sample123")
-            await incognito.locator('button', { hasText: 'Submit' }).click()
-
-            await expect(incognito.locator('[data-cy="welcome-screen-group"]')).toBeVisible()
-            await incognito.locator('input[data-cy="email-text-field"]').fill("sample@gmail.com")
-
-            await incognito.getByRole('button', {name: 'Submit'}).click()
-
-            await expect(
-                incognito.locator('div')
-                .filter({ hasText: "🎉Thank You.Your response has" })
-                .nth(3)
-            ).toBeVisible({ timeout: 60000 })
-
-            await newContext.close()
-            await incognito.close()
+            await form.PasswordProtectedFormSubmission()
         })
 
         await test.step("Step 3: Verify the response", async()=>{
             await page.getByRole('link', { name: 'Submissions' }).click()
-            await expect(page.getByRole('cell', { name: 'sample@gmail.com' })).toBeVisible()
+            await expect(page.getByRole('cell', { name: SUBMISSION_USER_DETAILS.email })).toBeVisible()
         })
     })
 
-    test.only("should ensure unique submission of form", async({page, form}:{page:Page, form: UserForm})=>{
+    test("should ensure unique submission of form", async({page, form}:{page:Page, form: UserForm})=>{
         
         await test.step("Step 1:Publish a form", async()=>{
-            await page.getByTestId('publish-button').click()
-            await page.getByRole('link', { name: 'Settings' }).click()
-            await page.getByRole('link', { 
-                name: 'Prevent duplicate submissions Ensure that each submission is by a unique' 
-            }).click()
-
-            await page.getByLabel('Use cookies').click()
-            const submit = page.locator('[data-test-id="save-changes-button"]')
-
-            await submit.scrollIntoViewIfNeeded()
-            await submit.click()
+            await page.getByTestId(FORM_PUBLISH_SELECTORS.publishButton).click()
+            await form.configureAndPublish({
+                purpose:"Prevent duplicate submissions Ensure that each submission is by a unique",
+                formLabel:"Use cookies"
+            })
             await page.waitForTimeout(1000)
-
         })
 
         let inCognitURL: string | undefined
@@ -103,13 +81,12 @@ test.describe("Access Control: Password Protection on Form", ()=>{
             await form.formSubmission({
                 incognito:inCognitURL,
                 repeat: 1
-                
             })
         })
 
         await test.step("Step 4: Choose No Check option and submit", async()=>{
           await page.getByLabel('No checkResubmissions are').click()
-          const submit = page.locator('[data-test-id="save-changes-button"]')
+          const submit = page.locator(FORM_INPUT_SELECTORS.saveChanges)
           await submit.scrollIntoViewIfNeeded()
           await submit.click()
           await page.waitForTimeout(1000) 
@@ -117,6 +94,46 @@ test.describe("Access Control: Password Protection on Form", ()=>{
             cookies:false,
             repeat: 2
           })
+        })
+    })
+
+    test("Verify Email field visibility based on Single Choice selection and with logic disabled", async({
+        page,
+        form
+    }:{
+        page: Page,
+        form: UserForm
+    })=>{
+
+        await test.step("Step 1:Add inputs", async()=>{
+            await form.addInputsAndSetupQuestion()
+        })
+
+        await test.step("Step 2: Setup conditional logic", async()=>{
+            await form.configureAndPublish({
+                purpose:"Conditional Logic Add",
+                formLabel:"Add new condition"
+            })
+            await expect(page.getByRole('button', {
+                 name: 'Condition 1 If  Interested in' 
+                })).toBeVisible()
+            await page.getByTestId(FORM_PUBLISH_SELECTORS.publishButton).click()
+        })
+
+        await test.step("Step 3: Check the conditonal logic working (No)", async()=>{
+            await form.conditionalCheck({conditionCase:'No'})
+        })
+
+        await test.step("Step 4: Check the conditonal logic working (Yes)", async()=>{
+            await form.conditionalCheck({conditionCase:'Yes'})
+        })
+
+        await test.step("Step 5:Disable the conditional logic", async()=>{
+            await page.getByRole('button', {
+                 name: 'Condition 1 If  Interested in' 
+                }).getByRole('button').click()
+            await page.getByRole('button', { name: 'Disable' }).click()
+            await form.conditionalCheck({conditionCase:'All'})
         })
     })
 })

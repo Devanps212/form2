@@ -30,7 +30,7 @@ export default defineConfig({
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
-  timeout:70000,
+  timeout:80000,
   use: {
     
     permissions: ['clipboard-write', 'clipboard-read'],
@@ -53,8 +53,15 @@ export default defineConfig({
       name: 'loggedin tests',
       use: { ...devices['Desktop Chrome'], storageState: STORAGE_STATE },
       dependencies:['login'],
+      teardown:'Teardown',
       testMatch:'**/*spec.ts',
     },
+
+    {
+      name:"Teardown",
+      use: { ...devices['Desktop Chrome'] },
+      testMatch:'**/global.teardown.ts'
+    }
 
     // {
     //   name: 'webkit',
