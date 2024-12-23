@@ -73,7 +73,7 @@ test.describe("Access Control: Password Protection on Form", ()=>{
         })
     })
 
-    test.only("should ensure unique submission of form", async({page, form}:{page:Page, form: UserForm})=>{
+    test("should ensure unique submission of form", async({page, form}:{page:Page, form: UserForm})=>{
         
         await test.step("Step 1:Publish a form", async()=>{
             await page.getByTestId('publish-button').click()
@@ -117,6 +117,80 @@ test.describe("Access Control: Password Protection on Form", ()=>{
             cookies:false,
             repeat: 2
           })
+        })
+    })
+
+    test.only("Verify Email field visibility based on Single Choice selection and with logic disabled", async({
+        page,
+        form
+    }:{
+        page: Page,
+        form: UserForm
+    })=>{
+        await test.step("Step 1:Add inputs", async()=>{
+            await page.getByRole('button', { name: 'Single choice' }).click()
+            await page.getByPlaceholder('Question').fill("Interested in Playwright ?")
+            
+            await expect(page.getByText('OptionsAdd optionAdd bulk')).toBeVisible()
+            await page.getByTestId('input-option-2').hover()
+            await page.getByTestId('delete-option-button-2').click()
+            await page.getByTestId('input-option-2').hover()
+            await page.getByTestId('delete-option-button-2').click()
+
+            await page.getByTestId('input-option-0').fill("Yes")
+            await page.getByTestId('input-option-1').fill("No")
+
+            await page.getByRole('button', { name: 'Summary' }).click()
+            const email = page.getByRole('button', { name: 'Email address' })
+            const singleChoice = page.getByRole('button', { name: 'Interested in Playwright ?' })
+
+            await email.dragTo(singleChoice)
+
+        })
+        await test.step("Step 2: Setup conditional logic", async()=>{
+            await page.getByRole('link', { name: 'Settings' }).click()
+            await page.getByRole('link', { name: 'Conditional Logic Add' }).click()
+
+            await page.getByTestId('neeto-molecules-header')
+            .getByRole('link', { name: 'Add new condition' }).click()
+
+            await page.locator('div').filter({ hasText: /^Select a field$/ }).first().click()
+            await page.getByTestId('menu-list').getByText('Interested in Playwright ?').click({timeout:50000})
+            await page.locator('div').filter({ hasText: /^Select a verb$/ }).first().click()
+            await page.getByText('contains', { exact: true }).click()
+            await page.locator('div').filter({ hasText: /^Select an option$/ }).first().click()
+            await page.getByTestId('menu-list').getByText('Yes').click()
+
+            await page.locator('div').filter({ hasText: /^Select an action type$/ }).first().click()
+            await page.locator('#react-select-4-option-0').click()
+
+            await page.locator('div').filter({ hasText: /^Select a field$/ }).first().click()
+            await page.getByTestId('menu-list').getByText('Email address').click()
+
+            const submit  = page.locator('[data-test-id="save-changes-button"]')
+            await submit.scrollIntoViewIfNeeded()
+            await submit.click()
+
+            await expect(page.getByRole('button', {
+                 name: 'Condition 1 If  Interested in' 
+                })).toBeVisible()
+                await page.getByTestId('publish-button').click()
+        })
+
+        await test.step("Step 3: Check the conditonal logic working (No)", async()=>{
+            await form.conditionalCheck({conditionCase:'No'})
+        })
+
+        await test.step("Step 4: Check the conditonal logic working (Yes)", async()=>{
+            await form.conditionalCheck({conditionCase:'Yes'})
+        })
+
+        await test.step("Step 5:Disable the conditional logic", async()=>{
+            await page.getByRole('button', {
+                 name: 'Condition 1 If  Interested in' 
+                }).getByRole('button').click()
+            await page.getByRole('button', { name: 'Disable' }).click()
+            await form.conditionalCheck({conditionCase:'All'})
         })
     })
 })
