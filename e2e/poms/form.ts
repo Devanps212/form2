@@ -6,6 +6,8 @@ interface Submission {
     cookies?: boolean
 }
 
+type condition = 'Yes' | 'No' | 'All'
+
 export default class UserForm{
     constructor(
         private page: Page,
@@ -82,7 +84,36 @@ export default class UserForm{
 
                 i++
             }
+        }   
+    }
+
+    conditionalCheck = async({
+        conditionCase
+    }:{
+        conditionCase: condition
+    })=>{
+        const pagePromise = this.page.waitForEvent('popup')
+        await this.page.getByTestId('publish-preview-button').click()
+        const page1 = await pagePromise
+        await expect(page1.locator('div').filter({
+            hasText: 'Form TitleQuestion' 
+           }).nth(2)).toBeVisible({timeout:90000})
+
+        if(conditionCase === "Yes"){
+            await page1.locator('label').filter({ hasText: conditionCase }).click()
+            await page1.getByRole('textbox').fill("sample@gmail.com")
+        }else if(conditionCase === "No"){
+            await page1.locator('label').filter({ hasText: conditionCase }).click()
+        }else{
+            await expect(page1.getByText('Question 1Email address*')).toBeVisible({timeout:50000})
+            await expect(page1.getByText('Question 1Interested in')).toBeVisible()
+            await page1.close()
+            return
         }
-        
+        await page1.locator('button', { hasText: 'Submit' }).click()
+        await expect(page1.locator('div').filter({
+            hasText: '🎉Thank You.Your response has' 
+           }).nth(3)).toBeVisible()
+        await page1.close()
     }
 }
